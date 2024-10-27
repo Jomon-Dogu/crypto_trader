@@ -1,7 +1,7 @@
 import ccxt
 import time
-from typing import Any, Optional
-
+from typing import Optional
+from datetime import datetime
 
 class CryptoTrader:
     def __init__(self, api_key: str, api_secret: str, passphrase: str, currency: str = 'BTC-EUR'):
@@ -31,8 +31,7 @@ class CryptoTrader:
         print(f"Aktueller Preis für {self.currency}: {current_price}")
         return current_price
 
-    def place_order_if_price_below(self, target_price: float, trade_volume: str, order_type: str = 'buy') -> Optional[
-        dict]:
+    def place_order_if_price_below(self, target_price: float, trade_volume: str, order_type: str = 'buy') -> Optional[dict]:
         """
         Platziert eine Order, wenn der aktuelle Preis unter dem Zielpreis liegt.
 
@@ -47,7 +46,6 @@ class CryptoTrader:
                 symbol=self.currency,
                 side=order_type,
                 amount=self.convert_funds_to_amount(trade_volume)
-                # Umrechnung des Geldbetrags in die entsprechende Menge
             )
             print("Order platziert:", order)
             return order
@@ -62,13 +60,10 @@ class CryptoTrader:
         :param funds: Betrag in der Basiswährung (z. B. Euro)
         :return: Menge der Kryptowährung
         """
-        # Beispiel: Bei BTC/EUR ist 1 BTC ca. 30.000 EUR
-        # Dies sollte durch den aktuellen Preis ersetzt werden.
         current_price = self.get_current_price()
         return float(funds) / current_price
 
-    def monitor_price_and_trade(self, initial_price: float, price_drop_threshold: float, trade_volume: str,
-                                order_type: str = 'buy'):
+    def monitor_price_and_trade(self, initial_price: float, price_drop_threshold: float, trade_volume: str, order_type: str = 'buy'):
         """
         Überwacht den Preis in einer Endlosschleife und platziert eine Order bei einem bestimmten Preisrückgang.
 
@@ -117,6 +112,9 @@ def main():
 
     # Endlosschleife zur Überwachung und automatischen Bestellung bei Preisrückgang
     trader.monitor_price_and_trade(initial_price, price_drop_threshold, trade_volume, order_type='buy')
+
+
+
 
 
 if __name__ == "__main__":
