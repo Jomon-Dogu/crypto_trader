@@ -1,6 +1,5 @@
-import cbpro
+import ccxt
 import time
-
 from typing import Any, Optional
 
 
@@ -14,7 +13,11 @@ class CryptoTrader:
         :param passphrase: API-Passphrase für die Authentifizierung
         :param currency: Währungspaar (z. B. 'BTC-EUR')
         """
-        self.client = cbpro.AuthenticatedClient(api_key, api_secret, passphrase)
+        self.client = ccxt.coinbase({
+            'apiKey': api_key,
+            'secret': api_secret,
+            'password': passphrase,  # Coinbase Pro verwendet ein 'password' Feld
+        })
         self.currency = currency
 
     def get_current_price(self) -> float:
@@ -23,8 +26,8 @@ class CryptoTrader:
 
         :return: Aktueller Preis der Währung als float
         """
-        ticker = self.client.get_product_ticker(product_id=self.currency)
-        current_price = float(ticker['price'])
+        ticker = self.client.fetch_ticker(self.currency)
+        current_price = ticker['last']
         print(f"Aktueller Preis für {self.currency}: {current_price}")
         return current_price
 
@@ -40,16 +43,29 @@ class CryptoTrader:
         """
         current_price = self.get_current_price()
         if current_price < target_price:
-            order = self.client.place_market_order(
-                product_id=self.currency,
+            order = self.client.create_market_order(
+                symbol=self.currency,
                 side=order_type,
-                funds=trade_volume
+                amount=self.convert_funds_to_amount(trade_volume)
+                # Umrechnung des Geldbetrags in die entsprechende Menge
             )
             print("Order platziert:", order)
             return order
         else:
             print(f"Preis ist zu hoch, keine Order platziert. Aktueller Preis: {current_price}")
             return None
+
+    def convert_funds_to_amount(self, funds: str) -> float:
+        """
+        Konvertiert den Betrag in die Menge der Kryptowährung.
+
+        :param funds: Betrag in der Basiswährung (z. B. Euro)
+        :return: Menge der Kryptowährung
+        """
+        # Beispiel: Bei BTC/EUR ist 1 BTC ca. 30.000 EUR
+        # Dies sollte durch den aktuellen Preis ersetzt werden.
+        current_price = self.get_current_price()
+        return float(funds) / current_price
 
     def monitor_price_and_trade(self, initial_price: float, price_drop_threshold: float, trade_volume: str,
                                 order_type: str = 'buy'):
@@ -67,10 +83,10 @@ class CryptoTrader:
             price_change = (previous_price - current_price) / previous_price
 
             if price_change >= price_drop_threshold:
-                order = self.client.place_market_order(
-                    product_id=self.currency,
+                order = self.client.create_market_order(
+                    symbol=self.currency,
                     side=order_type,
-                    funds=trade_volume
+                    amount=self.convert_funds_to_amount(trade_volume)
                 )
                 print("Order platziert nach Preisrückgang:", order)
                 previous_price = current_price  # Update des Referenzpreises nach Kauf
@@ -101,7 +117,6 @@ def main():
 
     # Endlosschleife zur Überwachung und automatischen Bestellung bei Preisrückgang
     trader.monitor_price_and_trade(initial_price, price_drop_threshold, trade_volume, order_type='buy')
-
 
 
 if __name__ == "__main__":
