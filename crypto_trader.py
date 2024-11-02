@@ -1,24 +1,23 @@
 import ccxt
-import time
 from typing import Optional
-from datetime import datetime
+from crypto_read import CryptoRead
+from key_manager import APIKeyManager
 
 class CryptoTrader:
-    def __init__(self, api_key: str, api_secret: str, passphrase: str, currency: str = 'BTC-EUR'):
+    def __init__(self, api_key: str, api_secret: str, currency: str = 'BTC-EUR'):
         """
         Initialisiert den API-Client und legt Standardwerte fest.
 
         :param api_key: API-Schlüssel für die Authentifizierung
         :param api_secret: API-Secret für die Authentifizierung
-        :param passphrase: API-Passphrase für die Authentifizierung
         :param currency: Währungspaar (z. B. 'BTC-EUR')
         """
         self.client = ccxt.coinbase({
             'apiKey': api_key,
             'secret': api_secret,
-            'password': passphrase,  # Coinbase Pro verwendet ein 'password' Feld
         })
         self.currency = currency
+        self.reader = CryptoRead(api_key, api_secret, currency)  # Instanz von CryptoRead
 
     def get_current_price(self) -> float:
         """
@@ -26,10 +25,7 @@ class CryptoTrader:
 
         :return: Aktueller Preis der Währung als float
         """
-        ticker = self.client.fetch_ticker(self.currency)
-        current_price = ticker['last']
-        print(f"Aktueller Preis für {self.currency}: {current_price}")
-        return current_price
+        return self.reader.get_current_price()  # Leitet den Aufruf an die CryptoRead-Klasse weiter
 
     def place_order_if_price_below(self, target_price: float, trade_volume: str, order_type: str = 'buy') -> Optional[dict]:
         """
@@ -57,7 +53,7 @@ class CryptoTrader:
         """
         Konvertiert den Betrag in die Menge der Kryptowährung.
 
-        :param funds: Betrag in der Basiswährung (z. B. Euro)
+        :param funds: Betrag in der Basiswährung (z. B. Euro) falls selected_currency = 'BTC-EUR' ist. '100.00' ist eine Beispieleingabe
         :return: Menge der Kryptowährung
         """
         current_price = self.get_current_price()
@@ -93,29 +89,36 @@ class CryptoTrader:
 
 
 def main():
-    # API-Schlüssel und Informationen
-    api_key = 'DEIN_API_KEY'
-    api_secret = 'DEIN_API_SECRET'
-    passphrase = 'DEINE_PASSPHRASE'
+
+    selected_currency = 'BTC-EUR'
+
+    # Pfadteile definieren
+    file_dir = "/home/wolff/keys"  # Ordnername
+    file_name = "coinbase_key.txt"
+
+    key_manager = APIKeyManager(file_dir, file_name)
+    key_manager.load_keys()
+
 
     # Trader-Instanz initialisieren
-    trader = CryptoTrader(api_key, api_secret, passphrase, currency='BTC-EUR')
+    trader = CryptoTrader(key_manager.get_api_key(), key_manager.get_api_secret(),  currency=selected_currency)
 
     # Beispielverwendung der Methoden
-    target_price = 30000  # Zielpreis für Kauf
-    trade_volume = '10.00'  # Handelsvolumen in EUR
-    initial_price = 32000  # Ausgangspreis
-    price_drop_threshold = 0.05  # 5% Preisrückgang
+  #  target_price = 30000  # Zielpreis für Kauf
+  #  trade_volume = '10.00'  # Handelsvolumen in EUR
+  #  initial_price = 32000  # Ausgangspreis
+  #  price_drop_threshold = 0.05  # 5% Preisrückgang
 
     # Platzieren einer einmaligen Order bei einem bestimmten Zielpreis
-    trader.place_order_if_price_below(target_price, trade_volume, order_type='buy')
+  #  trader.place_order_if_price_below(target_price, trade_volume, order_type='buy')
 
     # Endlosschleife zur Überwachung und automatischen Bestellung bei Preisrückgang
-    trader.monitor_price_and_trade(initial_price, price_drop_threshold, trade_volume, order_type='buy')
+   # trader.monitor_price_and_trade(initial_price, price_drop_threshold, trade_volume, order_type='buy')
 
+  #  status = trader.get_current_price()
 
-
-
+    status = trader.convert_funds_to_amount('64265.23')
+    print(status)
 
 if __name__ == "__main__":
     main()
