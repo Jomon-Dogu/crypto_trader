@@ -2,6 +2,7 @@ import ccxt
 import time
 from typing import Optional
 from key_manager import APIKeyManager
+import requests
 
 class CryptoRead:
     def __init__(self, api_key: str, api_secret: str, currency: str = 'BTC-EUR'):
@@ -16,10 +17,46 @@ class CryptoRead:
             'apiKey': api_key,
             'secret': api_secret,
         })
+
         self.currency = currency
 
+        self.get_eur_markets()
 
+    def get_supported_markets(self):
+        """
+        Überprüft, welche Währungspaare in `self.currency_pairs` tatsächlich von Coinbase unterstützt werden.
 
+        :return: Tuple mit zwei Listen: (unterstützte Paare, nicht unterstützte Paare)
+        """
+        supported = []
+        unsupported = []
+        
+        for pair in self.eur_markets:
+            try:
+                # Versuch, das Ticker-Info für das Paar abzurufen
+                self.client.fetch_ticker(pair)
+                supported.append(pair)  # Kein Fehler, Paar wird unterstützt
+            except ccxt.errors.BadSymbol:
+                unsupported.append(pair)  # Fehler zeigt an, dass das Paar nicht unterstützt wird
+            except Exception as e:
+                # Allgemeiner Fehler, der abgefangen und protokolliert wird, falls erforderlich
+                print(f"Fehler für {pair}: {e}")
+                unsupported.append(pair)
+        
+        return supported, unsupported
+    
+
+    def get_eur_markets(self):
+        """
+        Ruft alle handelbaren Märkte in EUR von der Coinbase-API ab und speichert die Symbole im Attribut 'eur_markets'.
+        """
+        url = "https://api.exchange.coinbase.com/products"
+        response = requests.get(url).json()
+
+        
+
+        # Filter für EUR-Märkte und nur Symbole (id) speichern
+        self.eur_markets = [market['id'] for market in response if market['quote_currency'] == 'EUR']
 
     def get_current_price(self) -> float:
         """
@@ -28,6 +65,7 @@ class CryptoRead:
         :return: Aktueller Preis der Währung als float
         """
         ticker = self.client.fetch_ticker(self.currency)
+        #print(ticker)
         current_price = ticker['last']
         print(f"Aktueller Preis für {self.currency}: {current_price}")
         return current_price
@@ -62,15 +100,26 @@ def main():
     api_key = key_manager.get_api_key()
     api_secret = key_manager.get_api_secret()
     
-    # Trader-Instanz initialisieren
-    crypto_name = ['BTC-EUR', 'ETH-EUR']
-
-    reader = [CryptoRead(api_key, api_secret, currency=i) for i in crypto_name]
-    [print(reader[o].get_current_price()) for o in range(len(reader))]
-
+ 
+    crypto_reader = CryptoRead(api_key, api_secret)
+    # Ausgabe der verfügbaren EUR-Märkte
+    all_coins_of_interest = crypto_reader.eur_markets
+    all_coins_of_interest_useable = crypto_reader.get_supported_markets()[0]
+ #   print(all_coins_of_interest_useable)
 
     # Preis in einer Endlosschleife ausgeben
   #  reader.print_price_in_loop(interval=10)  # 10 Sekunden zwischen den Preisabfragen
+
+     # Trader-Instanz initialisieren
+   # all_coins_of_interest = ['XYO-EUR', 'ETH-EUR']
+   # print(all_coins_of_interest)
+
+    reader = [CryptoRead(api_key, api_secret, currency=i) for i in all_coins_of_interest_useable]
+    
+
+            
+    [print(reader[o].get_current_price()) for o in range(len(reader))]
+
 
 if __name__ == "__main__":
     main()
