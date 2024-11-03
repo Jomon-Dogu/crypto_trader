@@ -16,6 +16,9 @@ def main():
     api_key = key_manager.get_api_key()
     api_secret = key_manager.get_api_secret()
     
+
+
+    
     # Trader-Instanz initialisieren
     trader = CryptoRead(api_key, api_secret, currency='BTC-EUR')
     # Preis in einer Endlosschleife ausgeben

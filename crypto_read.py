@@ -21,6 +21,19 @@ class CryptoRead:
         })
         self.currencies = currencies  # Liste von Währungspaaren
         self.eur_markets = []
+        self.results=[]
+        self.observers = []  # Liste aller registrierten Beobachter (Trader)
+
+    def register_observer(self, observer):
+        """Registriert einen Beobachter, der bei neuen Daten benachrichtigt wird."""
+        self.observers.append(observer)
+
+    def notify_observers(self, data):
+        """Benachrichtigt alle registrierten Beobachter mit neuen Daten."""
+        for observer in self.observers:
+            observer.update(data)
+
+
 
     def get_supported_markets(self):
             """
@@ -66,7 +79,7 @@ class CryptoRead:
             try:
                 ticker = self.client.fetch_ticker(currency)
                 current_price = ticker['last']
-                print(f"Aktueller Preis für {currency}: {current_price}")
+     #           print(f"Aktueller Preis für {currency}: {current_price}")
                 prices.append((currency, current_price))
             except ccxt.errors.BadSymbol:
                 print(f"Symbol nicht unterstützt: {currency}")
@@ -74,48 +87,56 @@ class CryptoRead:
                 print(f"Fehler beim Abrufen des Preises für {currency}: {e}")
         return prices
 
-    def print_prices_in_loop(self, data_type: str = 'current', interval: int = 10, hours_ago: Optional[int] = None):
+    def print_prices_in_loop(self, data_type: str = 'current', interval: int = 10, hours_ago: Optional[int] = None, cycles: int = 3):
         """
-        Gibt die Preise der festgelegten Währungen in einer Endlosschleife aus.
+        Speichert die Preise der festgelegten Währungen in einer Liste und gibt sie nach Abschluss zurück.
 
         :param data_type: Art der Daten, die angezeigt werden sollen ('current', 'past' oder 'change')
         :param interval: Zeitspanne zwischen den Preisabfragen in Sekunden (Standard: 10 Sekunden)
         :param hours_ago: Anzahl der Stunden zurück für 'past' und 'change' Daten.
+        :param cycles: Anzahl der Iterationen, bevor die Schleife endet (Standard: 1).
+        :return: Liste der erfassten Preisdaten je nach Datentyp.
         """
         try:
-            while True:
+            u=0
+            for _ in range(cycles):
                 if data_type == 'current':
                     prices = self.get_current_prices()
-                    for currency, price in prices:
-                        print(f"Aktueller Preis für {currency}: {price}")
+                    data = {currency: price for currency, price in prices}
+                    self.results.append({currency: price for currency, price in prices})
 
                 elif data_type == 'past':
                     if hours_ago is None:
                         print("Bitte geben Sie für 'past' Daten eine Stundenanzahl an.")
                         return
                     prices = self.get_past_prices(hours_ago)
-                    for currency, price in prices:
-                        print(f"Preis für {currency} vor {hours_ago} Stunden: {price}")
+                    data = {currency: price for currency, price in prices}
+                    self.results.append({currency: price for currency, price in prices})
 
                 elif data_type == 'change':
                     if hours_ago is None:
                         print("Bitte geben Sie für 'change' Daten eine Stundenanzahl an.")
                         return
                     changes = self.get_price_change_percentage(hours_ago)
-                    for currency, change in changes:
-                        if change is not None:
-                            print(f"Preisänderung für {currency} in den letzten {hours_ago} Stunden: {change:.2f}%")
-                        else:
-                            print(f"Keine ausreichenden Daten für {currency}")
+                    data = {currency: change for currency, change in changes if change is not None}
+                    self.results.append({currency: change for currency, change in changes if change is not None})
 
                 else:
                     print("Ungültiger Datentyp. Wählen Sie 'current', 'past' oder 'change'.")
                     return
-
+                
+                self.results.append(data)
+                self.notify_observers(data)
+                
+                u+=1
+                print("ende",u)
                 time.sleep(interval)
 
         except KeyboardInterrupt:
-            print("\nPreisanzeige wurde beendet.")
+            print("\nDatenerfassung wurde beendet.")
+        
+        return self.results
+
 
     def get_past_prices(self, hours_ago: int) -> List[Tuple[str, Optional[float]]]:
         """
@@ -135,7 +156,7 @@ class CryptoRead:
                 ohlcv = self.client.fetch_ohlcv(currency, timeframe='1h', since=since, limit=1)
                 if ohlcv:
                     past_price = ohlcv[0][4]  # Schlusskurs der letzten Kerze (OHLCV: [timestamp, open, high, low, close, volume])
-                    print(f"Preis für {currency} vor {hours_ago} Stunden: {past_price}")
+    #                print(f"Preis für {currency} vor {hours_ago} Stunden: {past_price}")
                     past_prices.append((currency, past_price))
                 else:
                     print(f"Keine Daten für {currency} verfügbar.")
@@ -166,7 +187,7 @@ class CryptoRead:
             if past_price is not None and current_price is not None:
                 change_percentage = ((current_price - past_price) / past_price) * 100
                 price_changes.append((currency, change_percentage))
-                print(f"Preisänderung für {currency} in den letzten {hours_ago} Stunden: {change_percentage:.2f}%")
+      #          print(f"Preisänderung für {currency} in den letzten {hours_ago} Stunden: {change_percentage:.2f}%")
             else:
                 print(f"Keine ausreichenden Daten für {currency}")
                 price_changes.append((currency, None))
@@ -213,8 +234,7 @@ def main():
     print("##########################################")
    # print(get_change_percentage)
     print("##########################################")
-   # print(get_change_percentage)
-           
+    print(reader.results)
 
 
 if __name__ == "__main__":

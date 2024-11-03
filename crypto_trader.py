@@ -1,117 +1,105 @@
-import ccxt
-from typing import Optional
 from crypto_read import CryptoRead
+from datetime import datetime, timedelta
+from typing import List, Tuple, Optional, Dict
+import requests
 from key_manager import APIKeyManager
+import threading
+import time
+
 
 class CryptoTrader:
-    def __init__(self, api_key: str, api_secret: str, currency: str = 'BTC-EUR'):
+    def __init__(self, crypto_reader: CryptoRead):
         """
-        Initialisiert den API-Client und legt Standardwerte fest.
+        Initialisiert den Trader und registriert ihn als Beobachter für CryptoRead.
+        """
+        self.crypto_reader = crypto_reader
+        self.latest_data = None
 
-        :param api_key: API-Schlüssel für die Authentifizierung
-        :param api_secret: API-Secret für die Authentifizierung
-        :param currency: Währungspaar (z. B. 'BTC-EUR')
+        # Registrierung des Traders als Beobachter
+        self.crypto_reader.register_observer(self)
+        self.results = []  # Speichert die Ergebnisse, die von collect_prices_continuous gesammelt werden
+    def update(self, data: Dict[str, float]):
         """
-        self.client = ccxt.coinbase({
-            'apiKey': api_key,
-            'secret': api_secret,
-        })
-        self.currency = currency
-        self.reader = CryptoRead(api_key, api_secret, currency)  # Instanz von CryptoRead
+        Empfängt die neuesten Daten von CryptoRead und speichert sie.
+        
+        :param data: Neueste Preis- oder Änderungsdaten, übermittelt von CryptoRead
+        """
+        self.latest_data = data
+        self.perform_trading_logic()
+
+    def perform_trading_logic(self):
+        """
+        Führt die Trading-Logik basierend auf den neuesten Daten aus.
+        Hier kann z. B. die Entscheidung getroffen werden, ob eine Währung gekauft/verkauft wird.
+        """
+  #      print("Neue Daten erhalten:", self.latest_data)
+        # Beispiel: Einfache Trading-Logik (nur Ausgabe)
+        for currency, value in self.latest_data.items():
+            if value > 60 :
+                print(f"{currency} ist größer als 60%")
+            else:
+                print("keine Währung ist größer 60%")
+      #      print(f"Überprüfung von {currency} mit Wert: {value}")
+            # Hier könnte komplexere Logik folgen, z.B. Schwellenwerte für Kauf-/Verkaufsentscheidungen
+
+    def start_data_collection(self, data_type: str = 'current', interval: int = 10, hours_ago: Optional[int] = None):
+        """
+        Startet die Datenerfassung im Hintergrund in einem separaten Thread.
+
+        :param data_type: Art der Daten, die angezeigt werden sollen ('current', 'past' oder 'change')
+        :param interval: Zeitspanne zwischen den Preisabfragen in Sekunden (Standard: 10 Sekunden)
+        :param hours_ago: Anzahl der Stunden zurück für 'past' und 'change' Daten.
+        """
+        data_thread = threading.Thread(
+            target=self.crypto_reader.print_prices_in_loop,
+            args=(data_type, interval, hours_ago),
+            daemon=True  # Der Thread wird automatisch beendet, wenn das Hauptprogramm endet
+        )
+        data_thread.start()
+        return data_thread
+    
+    def get_latest_results(self) -> List[Dict[str, float]]:
+        """
+        Gibt die aktuellen Ergebnisse zurück, die durch die Hintergrunddatenerfassung gesammelt wurden.
+
+        :return: Liste von Preisänderungen oder Preisen für alle Währungspaare
+        """
+        return self.crypto_reader.results  # Zugriff auf die print_prices_in_loop gesammelten Daten
 
     
-    def place_order_if_price_below(self, target_price: float, trade_volume: str, order_type: str = 'buy') -> Optional[dict]:
-        """
-        Platziert eine Order, wenn der aktuelle Preis unter dem Zielpreis liegt.
-
-        :param target_price: Preis, bei dem gekauft werden soll
-        :param trade_volume: Handelsvolumen (z. B. '10.00' in EUR)
-        :param order_type: Art der Order ('buy' oder 'sell')
-        :return: Orderdetails als Dictionary, falls platziert, sonst None
-        """
-        current_price = self.get_current_price()
-        if current_price < target_price:
-            order = self.client.create_market_order(
-                symbol=self.currency,
-                side=order_type,
-                amount=self.convert_funds_to_amount(trade_volume)
-            )
-            print("Order platziert:", order)
-            return order
-        else:
-            print(f"Preis ist zu hoch, keine Order platziert. Aktueller Preis: {current_price}")
-            return None
-
-    def convert_funds_to_amount(self, funds: str) -> float:
-        """
-        Konvertiert den Betrag in die Menge der Kryptowährung.
-
-        :param funds: Betrag in der Basiswährung (z. B. Euro) falls selected_currency = 'BTC-EUR' ist. '100.00' ist eine Beispieleingabe
-        :return: Menge der Kryptowährung
-        """
-        current_price = self.get_current_price()
-        return float(funds) / current_price
-
-    def monitor_price_and_trade(self, initial_price: float, price_drop_threshold: float, trade_volume: str, order_type: str = 'buy'):
-        """
-        Überwacht den Preis in einer Endlosschleife und platziert eine Order bei einem bestimmten Preisrückgang.
-
-        :param initial_price: Ausgangspreis zur Berechnung des Preisrückgangs
-        :param price_drop_threshold: Schwelle für Preisrückgang in Prozent (z. B. 0.05 für 5%)
-        :param trade_volume: Handelsvolumen
-        :param order_type: Art der Order ('buy' oder 'sell')
-        """
-        previous_price = initial_price
-        while True:
-            current_price = self.get_current_price()
-            price_change = (previous_price - current_price) / previous_price
-
-            if price_change >= price_drop_threshold:
-                order = self.client.create_market_order(
-                    symbol=self.currency,
-                    side=order_type,
-                    amount=self.convert_funds_to_amount(trade_volume)
-                )
-                print("Order platziert nach Preisrückgang:", order)
-                previous_price = current_price  # Update des Referenzpreises nach Kauf
-            else:
-                print(f"Keine Order platziert. Preisänderung um {price_change * 100:.2f}%")
-
-            # Wartezeit vor der nächsten Überprüfung
-            time.sleep(60)
-
 
 def main():
 
-    selected_currency = 'BTC-EUR'
-
-    # Pfadteile definieren
     file_dir = "/home/wolff/keys"  # Ordnername
     file_name = "coinbase_key.txt"
 
+    # APIKeyManager-Instanz erstellen
     key_manager = APIKeyManager(file_dir, file_name)
+
+    # Lade die API-Schlüssel
     key_manager.load_keys()
+
+    api_key = key_manager.get_api_key()
+    api_secret = key_manager.get_api_secret()
     
-
     # Trader-Instanz initialisieren
-    trader = CryptoTrader(key_manager.get_api_key(), key_manager.get_api_secret(),  currency=selected_currency)
+    crypto_reader = CryptoRead(api_key, api_secret)
+    # Ausgabe der verfügbaren EUR-Märkte
+    all_coins_of_interest_useable = crypto_reader.get_supported_markets()[0]
 
-    # Beispielverwendung der Methoden
-  #  target_price = 30000  # Zielpreis für Kauf
-  #  trade_volume = '10.00'  # Handelsvolumen in EUR
-  #  initial_price = 32000  # Ausgangspreis
-  #  price_drop_threshold = 0.05  # 5% Preisrückgang
+    # Initialisiere CryptoRead und CryptoTrader
+    reader = CryptoRead(api_key, api_secret, ['BTC-EUR', 'ETH-EUR'])
+    trader = CryptoTrader(reader)  # Trader wird automatisch als Beobachter registriert
 
-    # Platzieren einer einmaligen Order bei einem bestimmten Zielpreis
-  #  trader.place_order_if_price_below(target_price, trade_volume, order_type='buy')
+    # Starte die kontinuierliche Datenerfassung in einem separaten Thread
+    data_thread = trader.start_data_collection('change', 10, 6)
 
-    # Endlosschleife zur Überwachung und automatischen Bestellung bei Preisrückgang
-   # trader.monitor_price_and_trade(initial_price, price_drop_threshold, trade_volume, order_type='buy')
+    for _ in range(5):
+        # Abrufen und Anzeigen der neuesten Ergebnisse in regelmäßigen Abständen
+        latest_results = trader.get_latest_results()
+        print("Aktuelle Ergebnisse:", latest_results)
+        time.sleep(10)  # Wartezeit, bevor die neuesten Ergebnisse erneut abgerufen werden
 
-  #  status = trader.get_current_price()
-
-    status = trader.convert_funds_to_amount('64265.23')
-    print(status)
 
 if __name__ == "__main__":
     main()
