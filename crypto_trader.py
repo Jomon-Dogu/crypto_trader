@@ -19,14 +19,7 @@ class CryptoTrader:
         self.currency = currency
         self.reader = CryptoRead(api_key, api_secret, currency)  # Instanz von CryptoRead
 
-    def get_current_price(self) -> float:
-        """
-        Ruft den aktuellen Preis der festgelegten Währung ab.
-
-        :return: Aktueller Preis der Währung als float
-        """
-        return self.reader.get_current_price()  # Leitet den Aufruf an die CryptoRead-Klasse weiter
-
+    
     def place_order_if_price_below(self, target_price: float, trade_volume: str, order_type: str = 'buy') -> Optional[dict]:
         """
         Platziert eine Order, wenn der aktuelle Preis unter dem Zielpreis liegt.
@@ -98,7 +91,7 @@ def main():
 
     key_manager = APIKeyManager(file_dir, file_name)
     key_manager.load_keys()
-
+    
 
     # Trader-Instanz initialisieren
     trader = CryptoTrader(key_manager.get_api_key(), key_manager.get_api_secret(),  currency=selected_currency)
