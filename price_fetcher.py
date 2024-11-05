@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from typing import List, Any
 
-import crypto_trader
-from crypto_trader import CryptoTrader
+import crypto_evaluator
+from crypto_evaluator import CryptoTrader
 
 class BTCPriceFetcher:
     def __init__(self, url: str, start_date: datetime, end_date: datetime, granularity: int = 86400):

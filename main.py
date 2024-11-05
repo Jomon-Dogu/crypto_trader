@@ -1,4 +1,4 @@
-from crypto_trader import CryptoTrader
+from crypto_evaluator import CryptoTrader
 from key_manager import APIKeyManager
 from crypto_read import CryptoRead
 
@@ -16,13 +16,12 @@ def main():
     api_key = key_manager.get_api_key()
     api_secret = key_manager.get_api_secret()
     
-
-
-    
     # Trader-Instanz initialisieren
-    trader = CryptoRead(api_key, api_secret, currency='BTC-EUR')
+    reader = CryptoRead(api_key, api_secret, 'BTC-EUR')
+    trader = CryptoTrader(reader)  # Trader wird automatisch als Beobachter registriert
+
     # Preis in einer Endlosschleife ausgeben
-    trader.print_price_in_loop(interval=10)  # 10 Sekunden zwischen den Preisabfragen
+    data_thread = trader.start_data_collection('change', 10, 6)
 
 if __name__ == "__main__":
     main()

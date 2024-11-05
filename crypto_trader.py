@@ -1,104 +1,144 @@
-from crypto_read import CryptoRead
-from datetime import datetime, timedelta
-from typing import List, Tuple, Optional, Dict
-import requests
+import ccxt
+from typing import List, Dict
+from crypto_evaluator import CryptoEvaluator
 from key_manager import APIKeyManager
-import threading
+from crypto_read import CryptoRead
 import time
 
-
 class CryptoTrader:
-    def __init__(self, crypto_reader: CryptoRead):
+    def __init__(self, api_key: str, api_secret: str, currency_pairs: List[str],crypto_reader:):
         """
-        Initialisiert den Trader und registriert ihn als Beobachter für CryptoRead.
+        Initialisiert den API-Client und legt die Liste der Währungspaare fest.
+
+        :param api_key: API-Schlüssel für die Authentifizierung bei der Coinbase-API
+        :param api_secret: API-Secret für die Authentifizierung bei der Coinbase-API
+        :param currency_pairs: Liste der zu handelnden Währungspaare, z. B. ['BTC-EUR', 'ETH-EUR']
         """
+        self.client = ccxt.coinbase({
+            'apiKey': api_key,
+            'secret': api_secret,
+        })
+        self.currency_of_interest = currency_pairs  # Liste von Währungspaaren für den Handel
         self.crypto_reader = crypto_reader
-        self.latest_data = None
+        self.currency_of_interest = []  # Liste für interessante Währungspaare
 
-        # Registrierung des Traders als Beobachter
-        self.crypto_reader.register_observer(self)
-        self.results = []  # Speichert die Ergebnisse, die von collect_prices_continuous gesammelt werden
-    def update(self, data: Dict[str, float]):
+
+
+    def set_currency_of_interest(self, currencies):
+        """Setzt die Währungen von Interesse."""
+        self.currency_of_interest = currencies
+
+    def get_currency_of_interest(self):
+        # Rückgabe der interessanten Währungen
+            return self.currency_of_interest
+    
+    
+    def get_current_prices(self) -> Dict[str, float]:
         """
-        Empfängt die neuesten Daten von CryptoRead und speichert sie.
+        Ruft die aktuellen Preise für alle festgelegten Währungspaare ab.
+
+        :return: Dictionary mit Währungspaaren und ihren aktuellen Preisen.
+        """
+        prices = {}
+        for pair in self.currency_of_interest:
+            try:
+                ticker = self.client.fetch_ticker(pair)
+                prices[pair] = ticker['last']
+                print(f"Aktueller Preis für {pair}: {prices[pair]}")
+            except ccxt.BaseError as e:
+                print(f"Fehler beim Abrufen des Preises für {pair}: {e}")
         
-        :param data: Neueste Preis- oder Änderungsdaten, übermittelt von CryptoRead
-        """
-        self.latest_data = data
-        self.perform_trading_logic()
+        return prices
 
-    def perform_trading_logic(self):
+    def buy_token_in_eur(self, pair: str, eur_amount: float):
         """
-        Führt die Trading-Logik basierend auf den neuesten Daten aus.
-        Hier kann z. B. die Entscheidung getroffen werden, ob eine Währung gekauft/verkauft wird.
-        """
-  #      print("Neue Daten erhalten:", self.latest_data)
-        # Beispiel: Einfache Trading-Logik (nur Ausgabe)
-        for currency, value in self.latest_data.items():
-            if value > 60 :
-                print(f"{currency} ist größer als 60%")
-            else:
-                print("keine Währung ist größer 60%")
-      #      print(f"Überprüfung von {currency} mit Wert: {value}")
-            # Hier könnte komplexere Logik folgen, z.B. Schwellenwerte für Kauf-/Verkaufsentscheidungen
+        Berechnet die Menge des Tokens basierend auf dem aktuellen EUR-Betrag und kauft den Token.
 
-    def start_data_collection(self, data_type: str = 'current', interval: int = 10, hours_ago: Optional[int] = None):
+        :param pair: Währungspaar, das gekauft werden soll, z. B. 'BTC-EUR'
+        :param eur_amount: Betrag in EUR, der für den Kauf verwendet werden soll
         """
-        Startet die Datenerfassung im Hintergrund in einem separaten Thread.
+        print(pair,"ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt")
+        try:
+            # Abrufen des aktuellen Preises
+            current_price = self.client.fetch_ticker(pair)['last']
+            # Berechnen der Kaufmenge in Basiswährung (z. B. BTC)
+            amount_to_buy = eur_amount / current_price
+            print(f"Berechnete Menge für {pair} bei {eur_amount} EUR: {amount_to_buy}")
 
-        :param data_type: Art der Daten, die angezeigt werden sollen ('current', 'past' oder 'change')
-        :param interval: Zeitspanne zwischen den Preisabfragen in Sekunden (Standard: 10 Sekunden)
-        :param hours_ago: Anzahl der Stunden zurück für 'past' und 'change' Daten.
-        """
-        data_thread = threading.Thread(
-            target=self.crypto_reader.print_prices_in_loop,
-            args=(data_type, interval, hours_ago),
-            daemon=True  # Der Thread wird automatisch beendet, wenn das Hauptprogramm endet
-        )
-        data_thread.start()
-        return data_thread
-    
-    def get_latest_results(self) -> List[Dict[str, float]]:
-        """
-        Gibt die aktuellen Ergebnisse zurück, die durch die Hintergrunddatenerfassung gesammelt wurden.
+            # Kaufauftrag erstellen
+   #         order = self.client.create_market_buy_order(pair, amount_to_buy) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            print(f"Kaufauftrag für {amount_to_buy} {pair.split('-')[0]} erfolgreich. Details: NOT JET")  #  {order}")
+        except ccxt.BaseError as e:
+            print(f"Fehler beim Kauf von {pair}: {e}")
 
-        :return: Liste von Preisänderungen oder Preisen für alle Währungspaare
+    def trade_all_tokens_in_eur(self, eur_amount_per_token: float):
         """
-        return self.crypto_reader.results  # Zugriff auf die print_prices_in_loop gesammelten Daten
+        Kauft alle in der Liste festgelegten Währungspaare mit einem festgelegten EUR-Betrag.
 
-    
+        :param eur_amount_per_token: Betrag in EUR, der für den Kauf jedes Tokens verwendet werden soll
+        """
+        for pair in self.currency_of_interest:
+            print(f"Kauf für {eur_amount_per_token} EUR in {pair}")
+            self.buy_token_in_eur(pair, eur_amount_per_token)
 
 def main():
-
     file_dir = "/home/wolff/keys"  # Ordnername
     file_name = "coinbase_key.txt"
 
-    # APIKeyManager-Instanz erstellen
+    # Erstelle eine Instanz von APIKeyManager und lade die API-Schlüssel
     key_manager = APIKeyManager(file_dir, file_name)
-
-    # Lade die API-Schlüssel
     key_manager.load_keys()
 
+    # API-Schlüssel abrufen
     api_key = key_manager.get_api_key()
     api_secret = key_manager.get_api_secret()
     
-    # Trader-Instanz initialisieren
+    # Initialisiere CryptoRead für die Datenerfassung
     crypto_reader = CryptoRead(api_key, api_secret)
-    # Ausgabe der verfügbaren EUR-Märkte
+    
+    # Rufe alle verfügbaren EUR-Märkte ab und speichere die Währungen von Interesse
     all_coins_of_interest_useable = crypto_reader.get_supported_markets()[0]
 
-    # Initialisiere CryptoRead und CryptoTrader
-    reader = CryptoRead(api_key, api_secret, ['BTC-EUR', 'ETH-EUR'])
-    trader = CryptoTrader(reader)  # Trader wird automatisch als Beobachter registriert
+    # Erstelle eine Instanz von CryptoEvaluator und füge die Märkte von Interesse hinzu
+    evaluator = CryptoEvaluator(crypto_reader)  # Der crypto_reader wird hier korrekt übergeben
+    evaluator.set_currency_of_interest(all_coins_of_interest_useable)
 
     # Starte die kontinuierliche Datenerfassung in einem separaten Thread
-    data_thread = trader.start_data_collection('change', 10, 6)
+    data_thread = evaluator.start_data_collection('change', cycles=10, hours_ago=6)
 
+    # Warten auf Datenerfassung (Wartezeit kann je nach Bedarf angepasst werden)
+    time.sleep(5)  # Wartezeit bis erste Daten verfügbar sind
+    
+    # Ausgabe der gesammelten Daten in regelmäßigen Abständen
     for _ in range(5):
-        # Abrufen und Anzeigen der neuesten Ergebnisse in regelmäßigen Abständen
-        latest_results = trader.get_latest_results()
-        print("Aktuelle Ergebnisse:", latest_results)
-        time.sleep(10)  # Wartezeit, bevor die neuesten Ergebnisse erneut abgerufen werden
+        # Abrufen und Anzeigen der neuesten Ergebnisse
+        latest_results = evaluator.get_latest_results()
+        
+        # Prüfen, ob `latest_results` Daten enthält
+        if latest_results:
+            print("Aktuelle Ergebnisse:", latest_results)
+        else:
+            print("Noch keine Ergebnisse verfügbar, warte auf Daten...")
+        
+        time.sleep(10)  # Zeit bis zur nächsten Abfrage
+    
+    # Warten auf Beendigung des Datenerfassung-Threads, falls notwendig
+    data_thread.join()
+
+    # Analysiere die gesammelten Daten und gebe Währungspaare von Interesse zurück
+    currency_pairs = evaluator.get_currency_of_interest()
+    print("Währungen von Interesse:", currency_pairs)
+
+    # Initialisiere die CryptoTrader-Klasse für den Handel
+    trader = CryptoTrader(api_key, api_secret, currency_pairs)
+    
+    # Preise der interessanten Währungspaare abrufen und anzeigen
+    current_prices = trader.get_current_prices(currency_pairs)
+    print("Aktuelle Preise:", current_prices)
+    
+    # Beispielkauf für alle interessanten Währungspaare mit festgelegtem Betrag in EUR pro Token
+    eur_amount_per_token = 50  # Betrag in EUR, der für jedes Währungspaar verwendet werden soll
+    trader.trade_all_tokens_in_eur(currency_pairs, eur_amount_per_token)
 
 
 if __name__ == "__main__":

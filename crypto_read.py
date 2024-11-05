@@ -87,7 +87,7 @@ class CryptoRead:
                 print(f"Fehler beim Abrufen des Preises für {currency}: {e}")
         return prices
 
-    def print_prices_in_loop(self, data_type: str = 'current', interval: int = 10, hours_ago: Optional[int] = None, cycles: int = 3):
+    def print_prices_in_loop(self, data_type: str, cycles: int, hours_ago: Optional[int] = None, interval: int = 10):
         """
         Speichert die Preise der festgelegten Währungen in einer Liste und gibt sie nach Abschluss zurück.
 
@@ -138,36 +138,42 @@ class CryptoRead:
         return self.results
 
 
-    def get_past_prices(self, hours_ago: int) -> List[Tuple[str, Optional[float]]]:
+    def get_past_prices(self, hours_ago: int, max_attempts: int = 3) -> List[Tuple[str, Optional[float]]]:
         """
         Ruft die Preise für eine Liste von Währungen für eine bestimmte Anzahl von Stunden zurück ab.
+        Führt mehrere Versuche durch, um sicherzustellen, dass die Daten abgerufen werden.
 
-        :param currencies: Liste der Währungspaare (z. B. ['BTC-EUR', 'ETH-EUR'])
         :param hours_ago: Anzahl der Stunden, die in der Vergangenheit liegen
+        :param max_attempts: Maximale Anzahl an Versuchen für die Datenabfrage
         :return: Liste von Tuples mit Währungspaaren und ihren Preisen vor `hours_ago` Stunden.
         """
         past_prices = []
-        # Berechne den Unix-Timestamp für die gewünschte Zeit in der Vergangenheit
         since = int((datetime.utcnow() - timedelta(hours=hours_ago)).timestamp() * 1000)
 
         for currency in self.currencies:
-            try:
-                # Abrufen von historischen Daten (Schlusskurs zum Zeitpunkt)
-                ohlcv = self.client.fetch_ohlcv(currency, timeframe='1h', since=since, limit=1)
-                if ohlcv:
-                    past_price = ohlcv[0][4]  # Schlusskurs der letzten Kerze (OHLCV: [timestamp, open, high, low, close, volume])
-    #                print(f"Preis für {currency} vor {hours_ago} Stunden: {past_price}")
-                    past_prices.append((currency, past_price))
-                else:
-                    print(f"Keine Daten für {currency} verfügbar.")
+            attempt = 0
+            past_price = None
+            while attempt < max_attempts and past_price is None:
+                try:
+                    ohlcv = self.client.fetch_ohlcv(currency, timeframe='1h', since=since, limit=5)  # Abfrage mehrerer Kerzen
+                    if ohlcv:
+                        past_price = ohlcv[-1][4]  # Schlusskurs der letzten verfügbaren Kerze
+                        past_prices.append((currency, past_price))
+                    else:
+                        print(f"Keine Daten für {currency} verfügbar, Versuch {attempt + 1}/{max_attempts}.")
+                        attempt += 1
+                except ccxt.errors.BadSymbol:
+                    print(f"Symbol nicht unterstützt: {currency}")
                     past_prices.append((currency, None))
-            except ccxt.errors.BadSymbol:
-                print(f"Symbol nicht unterstützt: {currency}")
+                    break
+                except Exception as e:
+                    print(f"Fehler beim Abrufen des Preises für {currency}: {e}")
+                    attempt += 1
+
+            if past_price is None:
+                print(f"Keine ausreichenden historischen Daten für {currency}")
                 past_prices.append((currency, None))
-            except Exception as e:
-                print(f"Fehler beim Abrufen des Preises für {currency}: {e}")
-                past_prices.append((currency, None))
-        
+
         return past_prices
     
     def get_price_change_percentage(self, hours_ago: int) -> List[Tuple[str, Optional[float]]]:
@@ -187,7 +193,6 @@ class CryptoRead:
             if past_price is not None and current_price is not None:
                 change_percentage = ((current_price - past_price) / past_price) * 100
                 price_changes.append((currency, change_percentage))
-      #          print(f"Preisänderung für {currency} in den letzten {hours_ago} Stunden: {change_percentage:.2f}%")
             else:
                 print(f"Keine ausreichenden Daten für {currency}")
                 price_changes.append((currency, None))
@@ -220,7 +225,7 @@ def main():
   #  reader.print_price_in_loop(interval=10)  # 10 Sekunden zwischen den Preisabfragen
 
      # Trader-Instanz initialisieren
-    all_coins_of_interest_useable = ['BTC-EUR', 'ETH-EUR']
+  #  all_coins_of_interest_useable = ['BTC-EUR', 'ETH-EUR']
    # print(all_coins_of_interest)
     reader = CryptoRead(api_key, api_secret, all_coins_of_interest_useable)
     print(reader.currencies)
