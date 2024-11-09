@@ -1,86 +1,99 @@
 from crypto_read import CryptoRead
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict
-from key_manager import APIKeyManager
+from typing import List, Optional, Dict, Tuple
 import threading
 import time
-
+from key_manager import APIKeyManager
+import math
 
 class CryptoEvaluator:
-    def __init__(self, crypto_reader: CryptoRead):
-        """
-        Initialisiert den Trader und registriert ihn als Beobachter für CryptoRead.
-        """
+    def __init__(self, crypto_reader: CryptoRead, parameter):
         self.crypto_reader = crypto_reader
         self.latest_data = None
         self.currency_of_interest = []
         self.entscheidung = []
-
-        # Registrierung des Traders als Beobachter
+        self.parameter = parameter
         self.crypto_reader.register_observer(self)
 
     def update(self, data: Dict[str, float]):
-        """
-        Empfängt die neuesten Daten von CryptoRead und speichert sie.
-        
-        :param data: Neueste Preis- oder Änderungsdaten, übermittelt von CryptoRead
-        """
-   #     print("Update-Methode aufgerufen mit Daten:", data)
         self.latest_data = data
         self.perform_trading_logic()
 
     def perform_trading_logic(self):
-        """
-        Führt die Trading-Logik basierend auf den neuesten Daten aus.
-        """
         if self.latest_data is None:
-            return  # Keine Daten vorhanden, keine Währungen zu überprüfen
+            return
         
-        currency_of_interest = []  # Lokale Liste zur Speicherung der Währungen, die die Bedingungen erfüllen
+        currency_of_interest = []
         for currency, value in self.latest_data.items():
-            if value > 0.1:  # Bedingung für interessante Währungen (Beispiel)##############################################bedingung
-   #             print(f"{currency} hat sich WIRKLICH um mehr als 1% geändert.")
+            if value > self.parameter:
                 currency_of_interest.append(currency)
-   #         else:
-   #             print(f"{currency} hat sich NICHT um mehr als 1% geändert.")
 
-        # Speichern der interessanten Währungen in der Instanzvariablen
         self.currency_of_interest = currency_of_interest
-   #     print("Aktualisierte Währungen von Interesse:", self.currency_of_interest)
 
     def get_currency_of_interest(self) -> List[str]:
-        """
-        Rückgabe der interessanten Währungen.
-        """
         return self.currency_of_interest
-    
-    def start_data_collection(self, data_type: str, cycles: int, hours_ago: Optional[int] = None, interval: int = 10):
-        """
-        Startet die Datenerfassung im Hintergrund in einem separaten Thread.
 
-        :param data_type: Art der Daten, die angezeigt werden sollen ('current', 'past' oder 'change')
-        :param cycles: Anzahl der Zyklen
-        :param hours_ago: Anzahl der Stunden zurück für 'past' und 'change' Daten.
-        :param interval: Zeitspanne zwischen den Preisabfragen in Sekunden (Standard: 10 Sekunden)
-        """
-        self.hours_ago = hours_ago
+    def start_data_collection(self, data_type: str, cycles: int, hours_ago: Optional[int] = None, interval: int = 10):
         data_thread = threading.Thread(
-            target=self.crypto_reader.print_prices_in_loop,
+            target=self.print_prices_in_loop,
             args=(data_type, cycles, hours_ago, interval),
-            daemon=True  # Der Thread wird automatisch beendet, wenn das Hauptprogramm endet
+            daemon=True
         )
         data_thread.start()
         return data_thread
-    
+
     def get_latest_results(self) -> List[Dict[str, float]]:
-        """
-        Gibt die aktuellen Ergebnisse zurück, die durch die Hintergrunddatenerfassung gesammelt wurden.
+        return self.crypto_reader.results
 
-        :return: Liste von Preisänderungen oder Preisen für alle Währungspaare
-        """
-        return self.crypto_reader.results  # Zugriff auf die print_prices_in_loop gesammelten Daten
+    def get_price_change_percentage(self, hours_ago: int) -> List[Tuple[str, Optional[float]]]:
+        current_prices = {currency: price for currency, price in self.crypto_reader.get_current_prices()}
+        past_prices = self.crypto_reader.get_past_prices(hours_ago)
+        
+        price_changes = []
+        for currency, past_price in past_prices:
+            current_price = current_prices.get(currency)
+            if past_price is not None and current_price is not None:
+                change_percentage = ((current_price - past_price) / past_price) * 100
+                price_changes.append((currency, change_percentage))
+            else:
+                print(f"Keine ausreichenden Daten für {currency}")
+                price_changes.append((currency, None))
+        
+        return price_changes
 
-    
+    def print_prices_in_loop(self, data_type: str, cycles: int, hours_ago: Optional[int] = None, interval: int = 10):
+        try:
+            for _ in range(cycles):
+                if data_type == 'current':
+                    prices = self.crypto_reader.get_current_prices()
+                    data = {currency: price for currency, price in prices}
+
+                elif data_type == 'past':
+                    if hours_ago is None:
+                        print("Bitte geben Sie für 'past' Daten eine Stundenanzahl an.")
+                        return
+                    prices = self.crypto_reader.get_past_prices(hours_ago)
+                    data = {currency: price for currency, price in prices}
+
+                elif data_type == 'change':
+                    if hours_ago is None:
+                        print("Bitte geben Sie für 'change' Daten eine Stundenanzahl an.")
+                        return
+                    changes = self.get_price_change_percentage(hours_ago)
+                    data = {currency: change for currency, change in changes if change is not None}
+
+                else:
+                    print("Ungültiger Datentyp. Wählen Sie 'current', 'past' oder 'change'.")
+                    return
+
+                self.crypto_reader.results.append(data)
+                self.crypto_reader.notify_observers(data)
+                time.sleep(interval)
+
+        except KeyboardInterrupt:
+            print("\nDatenerfassung wurde beendet.")
+
+
 def main():
     file_dir = "/home/wolff/keys"  # Ordnername
     file_name = "coinbase_key.txt"
@@ -99,34 +112,34 @@ def main():
 
     # Initialisiere CryptoRead und CryptoEvaluator
     reader = CryptoRead(api_key, api_secret, all_coins_of_interest_useable)
-    evaluator = CryptoEvaluator(reader)  # Trader wird automatisch als Beobachter registriert
+    evaluator = CryptoEvaluator(reader,5)  # Trader wird automatisch als Beobachter registriert
 
 
 
-    import math
 
-    interval = 10               # Intervall für die Datenerfassung
-    monitor_interval = 10       # Intervall für die Überwachungsschleife in main()
-    XXX = 60                      # Zyklen für die Datenerfassung
+    interval = 60*5       #10       # Intervall für die Datenerfassung
+    monitor_interval = 60*5  #10    # Intervall für die Überwachungsschleife in main()
+    XXX = 60                     # Zyklen für die Datenerfassung
 
     # Bestimme die Mindestanzahl an Iterationen für YYY, um die Synchronität zu gewährleisten
-    YYY = math.ceil((XXX * interval) / monitor_interval*3)
+    YYY = math.ceil((XXX * interval) / monitor_interval)  # *3
 
 
     # Starte die kontinuierliche Datenerfassung in einem separaten Thread
-    data_thread = evaluator.start_data_collection('change', XXX , 6, interval)  # mache ich das value von perform_trading_logic kleiner, muss ich hier das intervall von 1 auf 5 setzen.
+    data_thread = evaluator.start_data_collection('change', XXX , 24, interval)  # mache ich das value von perform_trading_logic kleiner, muss ich hier das intervall von 1 auf 5 setzen.
 
     # Gebe einige Sekunden Zeit für den Datenabruf
     time.sleep(5)  
 
     for iteration in range(YYY):
-  #      latest_results = evaluator.get_latest_results()
+        latest_results = evaluator.get_latest_results()
         
         # Ausgabe der aktuellen Ergebnisse
-  #      if latest_results:
-  #          print("Aktuelle Ergebnisse:", latest_results)
-   #     else:
-        print("Noch keine Ergebnisse verfügbar, warte auf Daten...")
+        if latest_results:
+            print("Aktuelle Ergebnisse:", latest_results)
+            print("#########################################################################################")
+        else:
+         print("Noch keine Ergebnisse verfügbar, warte auf Daten...")
 
         # Ausgabe der interessanten Währungen
    #     print("Währungen von Interesse (Hauptschleife):", evaluator.get_currency_of_interest())
