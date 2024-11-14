@@ -25,7 +25,7 @@ class CryptoEvaluator:
         
         currency_of_interest = []
         for currency, value in self.latest_data.items():
-            if value > self.parameter:
+            if value > self.parameter:                          # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 currency_of_interest.append(currency)
 
         self.currency_of_interest = currency_of_interest
