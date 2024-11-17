@@ -45,21 +45,6 @@ class CryptoEvaluator:
     def get_latest_results(self) -> List[Dict[str, float]]:
         return self.crypto_reader.results
 
-    def get_price_change_percentage(self, hours_ago: int) -> List[Tuple[str, Optional[float]]]:
-        current_prices = {currency: price for currency, price in self.crypto_reader.get_current_prices()}
-        past_prices = self.crypto_reader.get_past_prices(hours_ago)
-        
-        price_changes = []
-        for currency, past_price in past_prices:
-            current_price = current_prices.get(currency)
-            if past_price is not None and current_price is not None:
-                change_percentage = ((current_price - past_price) / past_price) * 100
-                price_changes.append((currency, change_percentage))
-            else:
-                print(f"Keine ausreichenden Daten für {currency}")
-                price_changes.append((currency, None))
-        
-        return price_changes
 
     def print_prices_in_loop(self, data_type: str, cycles: int, hours_ago: Optional[int] = None, interval: int = 10):
         try:
@@ -109,13 +94,10 @@ def main():
     # Trader-Instanz initialisieren
     crypto_reader = CryptoRead(api_key, api_secret)
     all_coins_of_interest_useable = crypto_reader.get_supported_markets()[0]
-
-    # Initialisiere CryptoRead und CryptoEvaluator
     reader = CryptoRead(api_key, api_secret, all_coins_of_interest_useable)
-    evaluator = CryptoEvaluator(reader,5)  # Trader wird automatisch als Beobachter registriert
 
-
-
+    
+    evaluator = CryptoEvaluator(reader,50)  # Trader wird automatisch als Beobachter registriert
 
     interval = 60*5       #10       # Intervall für die Datenerfassung
     monitor_interval = 60*5  #10    # Intervall für die Überwachungsschleife in main()
@@ -146,6 +128,10 @@ def main():
         if len(evaluator.get_currency_of_interest()) > 0:
             evaluator.entscheidung = 'Kaufen'
             print(evaluator.get_currency_of_interest()," -------> ", evaluator.entscheidung)
+        else:
+            evaluator.entscheidung = 'keine Kaufoption verfügbar'
+            print(evaluator.get_currency_of_interest()," -------> ", evaluator.entscheidung)
+
         
         # Wartezeit, bevor die neuesten Ergebnisse erneut abgerufen werden
         time.sleep(10)  
