@@ -1,6 +1,7 @@
 from key_manager import APIKeyManager
 from crypto_read import CryptoPriceAnalyzerCoinbase
 from crypto_read_alternativ import CryptoPriceAnalyzerCryptoCompare
+import time
 
 
 
@@ -34,25 +35,30 @@ if __name__ == "__main__":
     hours_ago = int(input("vergangene Stunden eingeben: "))  # Keine Aufforderung, nur Eingabe der Stundenanzahl
     threshold_value = 1  # in percent
 
-    analyzer_coinbase= CryptoPriceAnalyzerCoinbase(api_key, api_secret)
-    analyzer_coinbase_results = analyzer_coinbase.analyze_prices(hours_ago)
-    print("##########################################################")
-  #  print(analyzer_coinbase_results)
-    print("##########################################################")
-    threshold_change = CryptoEvaluate(analyzer_coinbase_results,threshold_value).threshold_change()
-    print("analyzer_coinbase_results ", threshold_change)
+    startpoint = 1
+    endpoint = 10
+    sleep_value = 10
+
+    while startpoint < endpoint:
+        print(startpoint)
+        startpoint = startpoint + 1
 
 
+        analyzer_coinbase= CryptoPriceAnalyzerCoinbase(api_key, api_secret)
+        analyzer_coinbase_results = analyzer_coinbase.analyze_prices(hours_ago)
+     #   print("##########################################################")
+    #  print(analyzer_coinbase_results)
+    #    print("##########################################################")
+        threshold_change = CryptoEvaluate(analyzer_coinbase_results,threshold_value).threshold_change()
+        print("analyzer_coinbase_results ", threshold_change)
 
 
-
-
-    analyzer_coinbase = CryptoPriceAnalyzerCoinbase(api_key, api_secret)
-    CURRENCY_PAIRS = analyzer_coinbase.currencies  # Die Liste von Währungspaaren aus Coinbase
-    analyzer_crypto_compare = CryptoPriceAnalyzerCryptoCompare(api_key, CURRENCY_PAIRS)
-    analyzer_crypto_compare_results = analyzer_crypto_compare.analyze_prices(hours_ago)
-    print("##########################################################")
-  #  print(analyzer_crypto_compare_results)
-    print("##########################################################")
-    threshold_change = CryptoEvaluate(analyzer_crypto_compare_results,threshold_value).threshold_change()
-    print("analyzer_crypto_compare_results ", threshold_change)
+        CURRENCY_PAIRS = analyzer_coinbase.currencies  # Die Liste von Währungspaaren aus Coinbase
+        analyzer_crypto_compare = CryptoPriceAnalyzerCryptoCompare(api_key, CURRENCY_PAIRS)
+        analyzer_crypto_compare_results = analyzer_crypto_compare.analyze_prices(hours_ago)
+    #    print("##########################################################")
+    #  print(analyzer_crypto_compare_results)
+     #   print("##########################################################")
+        threshold_change = CryptoEvaluate(analyzer_crypto_compare_results,threshold_value).threshold_change()
+        print("analyzer_crypto_compare_results ", threshold_change)
+        time.sleep(sleep_value)
