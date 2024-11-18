@@ -167,7 +167,7 @@ if __name__ == "__main__":
  #   print(analysis_results)
     # Ergebnisse ausgeben
     print("\nErgebnisse:")
-    print(analysis_results)
+    print(analysis_results[0][0][0])
    
    
    
