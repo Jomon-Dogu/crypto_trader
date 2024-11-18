@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     startpoint = 1
     endpoint = 10
-    sleep_value = 10
+    sleep_value = 60*20
     str_choise = 'SHIB-EUR'
     while startpoint < endpoint:
         print(startpoint)
