@@ -21,18 +21,18 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.10"  # You can adjust the version if needed
 
-      # Step 3: Install dependencies
-      - name: Install dependencies
+      # Step 3: Install build dependencies
+      - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools wheel
+          pip install setuptools wheel build  # `build` is used for pyproject.toml
 
-      # Step 4: Build package
-      - name: Build package
+      # Step 4: Build package using pyproject.toml
+      - name: Build package with pyproject.toml
         run: |
-          python setup.py sdist bdist_wheel
+          python -m build  # Use the build tool to package your code
 
       # Step 5: Publish to GitHub Packages
       - name: Publish to GitHub Packages
