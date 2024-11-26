@@ -27,3 +27,8 @@ git push origin :refs/tags/12345
 # alternative approach
 git push --delete origin tagName
 git tag -d tagName
+
+# create tag
+
+git tag v0.1.0
+git push origin v0.1.0

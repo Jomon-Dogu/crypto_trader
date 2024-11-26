@@ -1,49 +1,22 @@
-name: Package Python Project
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+[project]
+name = "your-package-name"
+version = "0.1.0"
+description = "A short description of your project"
+authors = [
+    { name = "Your Name", email = "your_email@example.com" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+homepage = "https://github.com/yourusername/yourrepository"
+repository = "https://github.com/yourusername/yourrepository"
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+dependencies = [
+    "requests",  # Example dependencies
+]
 
-    steps:
-      # Step 1: Checkout Code
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      # Step 2: Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"  # You can adjust the version if needed
-
-      # Step 3: Install build dependencies
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel build  # Install setuptools, wheel, and build
-
-      # Step 4: Build package using pyproject.toml
-      - name: Build package with pyproject.toml
-        run: |
-          python -m build  # Build the package using pyproject.toml
-
-      # Step 5: Install Twine for publishing
-      - name: Install Twine
-        run: |
-          pip install twine  # Install Twine to upload the package
-
-      # Step 6: Publish to PyPI or GitHub Packages
-      - name: Publish to GitHub Packages or PyPI
-        env:
-          TWINE_USERNAME: "__token__"  # Username for GitHub Packages or PyPI
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}  # GitHub or PyPI Token from Secrets
-        run: |
-          echo "Publishing to GitHub Packages or PyPI"
-          twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
+[tool.setuptools.packages.find]
+where = ["src"]
