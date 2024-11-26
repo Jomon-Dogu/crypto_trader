@@ -1,48 +1,35 @@
-name: Package Python Project
+name: Build and Publish Python Package
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
     branches:
       - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout Code
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"  # You can adjust the version if needed
+          python-version: '3.x'
 
-      # Step 3: Install build dependencies
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools wheel build  # Install setuptools, wheel, and build
+          pip install setuptools wheel
 
-      # Step 4: Build package using pyproject.toml
-      - name: Build package with pyproject.toml
+      - name: Build package
         run: |
-          python -m build  # Build the package using pyproject.toml
+          python -m build
 
-      # Step 5: Install Twine for publishing
-      - name: Install Twine
+      - name: Publish to PyPI
         run: |
-          pip install twine  # Install Twine to upload the package
-
-      # Step 6: Publish to GitHub Packages
-      - name: Publish to GitHub Packages
+          pip install twine
+          twine upload dist/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Publishing to GitHub Packages"
-          twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}  # GitHub Secret with your PyPI username
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}  # GitHub Secret with your PyPI API token
