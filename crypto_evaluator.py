@@ -1,145 +1,151 @@
-from crypto_read import CryptoRead
-from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Tuple
-import threading
-import time
 from key_manager import APIKeyManager
-import math
-
-class CryptoEvaluator:
-    def __init__(self, crypto_reader: CryptoRead, parameter):
-        self.crypto_reader = crypto_reader
-        self.latest_data = None
-        self.currency_of_interest = []
-        self.entscheidung = []
-        self.parameter = parameter
-        self.crypto_reader.register_observer(self)
-
-    def update(self, data: Dict[str, float]):
-        self.latest_data = data
-        self.perform_trading_logic()
-
-    def perform_trading_logic(self):
-        if self.latest_data is None:
-            return
-        
-        currency_of_interest = []
-        for currency, value in self.latest_data.items():
-            if value > self.parameter:                          # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                currency_of_interest.append(currency)
-
-        self.currency_of_interest = currency_of_interest
-
-    def get_currency_of_interest(self) -> List[str]:
-        return self.currency_of_interest
-
-    def start_data_collection(self, data_type: str, cycles: int, hours_ago: Optional[int] = None, interval: int = 10):
-        data_thread = threading.Thread(
-            target=self.print_prices_in_loop,
-            args=(data_type, cycles, hours_ago, interval),
-            daemon=True
-        )
-        data_thread.start()
-        return data_thread
-
-    def get_latest_results(self) -> List[Dict[str, float]]:
-        return self.crypto_reader.results
+from crypto_read import CryptoPriceAnalyzerCoinbase
+from crypto_read_alternativ import CryptoPriceAnalyzerCryptoCompare
+import time
 
 
-    def print_prices_in_loop(self, data_type: str, cycles: int, hours_ago: Optional[int] = None, interval: int = 10):
-        try:
-            for _ in range(cycles):
-                if data_type == 'current':
-                    prices = self.crypto_reader.get_current_prices()
-                    data = {currency: price for currency, price in prices}
 
-                elif data_type == 'past':
-                    if hours_ago is None:
-                        print("Bitte geben Sie für 'past' Daten eine Stundenanzahl an.")
-                        return
-                    prices = self.crypto_reader.get_past_prices(hours_ago)
-                    data = {currency: price for currency, price in prices}
-
-                elif data_type == 'change':
-                    if hours_ago is None:
-                        print("Bitte geben Sie für 'change' Daten eine Stundenanzahl an.")
-                        return
-                    changes = self.get_price_change_percentage(hours_ago)
-                    data = {currency: change for currency, change in changes if change is not None}
-
-                else:
-                    print("Ungültiger Datentyp. Wählen Sie 'current', 'past' oder 'change'.")
-                    return
-
-                self.crypto_reader.results.append(data)
-                self.crypto_reader.notify_observers(data)
-                time.sleep(interval)
-
-        except KeyboardInterrupt:
-            print("\nDatenerfassung wurde beendet.")
-
-
-def main():
-    file_dir = "/home/wolff/keys"  # Ordnername
-    file_name = "coinbase_key.txt"
-
-    # APIKeyManager-Instanz erstellen
-    key_manager = APIKeyManager(file_dir, file_name)
-
-    # Lade die API-Schlüssel
-    key_manager.load_keys()
-    api_key = key_manager.get_api_key()
-    api_secret = key_manager.get_api_secret()
+class CryptoEvaluate:
     
-    # Trader-Instanz initialisieren
-    crypto_reader = CryptoRead(api_key, api_secret)
-    all_coins_of_interest_useable = crypto_reader.get_supported_markets()[0]
-    reader = CryptoRead(api_key, api_secret, all_coins_of_interest_useable)
+    def __init__(self,data):
+        self.data = data
 
-    
-    evaluator = CryptoEvaluator(reader,50)  # Trader wird automatisch als Beobachter registriert
+    def threshold_change(self, value_1):
+        """
+        Filtert Währungspaare basierend auf einem Schwellenwert für die Preisänderung.
+        :param value_1: Schwellenwert für die Preisänderung (in Prozent)
+        :return: Liste der Paare, die den Schwellenwert überschreiten/unterschreiten
+        """
+        self.value_1 = value_1
+        collected_results = []
 
-    interval = 60*5       #10       # Intervall für die Datenerfassung
-    monitor_interval = 60*5  #10    # Intervall für die Überwachungsschleife in main()
-    XXX = 60                     # Zyklen für die Datenerfassung
+        for entry in self.data:
+            pair = entry[0][0]  # Währungspaar
+            price_change = entry[2][1]  # Preisänderung
 
-    # Bestimme die Mindestanzahl an Iterationen für YYY, um die Synchronität zu gewährleisten
-    YYY = math.ceil((XXX * interval) / monitor_interval)  # *3
+            if self.value_1 > 0 and price_change > self.value_1:
+                collected_results.append((pair, price_change))
+            elif self.value_1 < 0 and price_change < self.value_1:
+                collected_results.append((pair, price_change))
+            elif self.value_1 == 0 and price_change == self.value_1:
+                collected_results.append((pair, price_change))
 
+        return collected_results
 
-    # Starte die kontinuierliche Datenerfassung in einem separaten Thread
-    data_thread = evaluator.start_data_collection('change', XXX , 24, interval)  # mache ich das value von perform_trading_logic kleiner, muss ich hier das intervall von 1 auf 5 setzen.
-
-    # Gebe einige Sekunden Zeit für den Datenabruf
-    time.sleep(5)  
-
-    for iteration in range(YYY):
-        latest_results = evaluator.get_latest_results()
-        
-        # Ausgabe der aktuellen Ergebnisse
-        if latest_results:
-            print("Aktuelle Ergebnisse:", latest_results)
-            print("#########################################################################################")
-        else:
-         print("Noch keine Ergebnisse verfügbar, warte auf Daten...")
-
-        # Ausgabe der interessanten Währungen
-   #     print("Währungen von Interesse (Hauptschleife):", evaluator.get_currency_of_interest())
-        if len(evaluator.get_currency_of_interest()) > 0:
-            evaluator.entscheidung = 'Kaufen'
-            print(evaluator.get_currency_of_interest()," -------> ", evaluator.entscheidung)
-        else:
-            evaluator.entscheidung = 'keine Kaufoption verfügbar'
-            print(evaluator.get_currency_of_interest()," -------> ", evaluator.entscheidung)
-
-        
-        # Wartezeit, bevor die neuesten Ergebnisse erneut abgerufen werden
-        time.sleep(10)  
-
-    # Falls Sie sicherstellen möchten, dass die Datenerfassung abgeschlossen ist
-    data_thread.join()  # Wartet, bis der Datenerfassungs-Thread beendet ist
 
 
 
 if __name__ == "__main__":
-    main()
+    file_dir = "/home/wolff/keys"  # Ordnername
+    file_name = "coinbase_key.txt"
+
+    key_manager = APIKeyManager(file_dir, file_name)
+
+    key_manager.load_keys()
+    api_key = key_manager.get_api_key()
+    api_secret = key_manager.get_api_secret()
+
+    threshold_value = -10  # in Prozent
+    hours_ago = int(input("Vergangene Stunden eingeben: "))
+
+
+    startpoint = 1
+    endpoint = 10
+    sleep_value = 60*2
+
+    
+
+
+    analyzer_coinbase = CryptoPriceAnalyzerCoinbase(api_key, api_secret)
+    supported_markets = analyzer_coinbase.currencies
+
+    # Benutzer gibt die Währungspaare ein, bevor die Schleife startet
+    currency_pairs = input(
+        f"\nGeben Sie die zu analysierenden Währungspaare aus dieser Liste ein(z. B. BTC-EUR,ETH-EUR):\n\n{supported_markets}\n\noder drücken Sie Enter für alle: "
+    )
+    if not currency_pairs.strip():
+        currency_pairs = supported_markets  # Alle unterstützten Märkte analysieren
+    else:
+        currency_pairs = [pair.strip().upper() for pair in currency_pairs.split(",")]
+
+
+
+
+
+    while startpoint < endpoint:
+        print("Durchlauf: ",startpoint)
+        startpoint += 1
+
+
+
+
+
+        # Preisanalyse
+        results_33 = analyzer_coinbase.analyze_specific_currencies(currency_pairs, hours_ago)
+        print("")
+        print("")
+        print("######################## erst CryptoCoinbase: ##################################")
+
+        # Ergebnisse ausgeben
+        print("\nAnalyse-Ergebnisse:")
+        for result in results_33:
+            if result:
+                past_price = result[0][1]
+                current_price = result[1][1]
+                price_change = result[2][1]
+
+                print(f"Währungspaar: {result[0][0]}")
+                print(f"  - Preis vor {hours_ago} Stunden: {past_price:.2f}")
+                print(f"  - Aktueller Preis: {current_price:.2f}")
+                print(f"  - Preisänderung: {price_change:.2f}%\n")
+            else:
+                print(f"Ergebnisse für ein Währungspaar konnten nicht abgerufen werden.\n")
+
+
+        # Übergeben Sie die Ergebnisse an CryptoEvaluate
+        evaluator = CryptoEvaluate(results_33)
+
+        # Filtern Sie Währungspaare basierend auf dem Schwellenwert
+        threshold_results = evaluator.threshold_change(threshold_value)
+        print(f"Währungspaare mit Preisänderung über dem Schwellenwert {threshold_value}: ", threshold_results)
+
+
+
+        print("######################## jetzt CryptoCompaire: ##################################")
+
+        analyzer = CryptoPriceAnalyzerCryptoCompare(api_key)
+        results = analyzer.analyze_prices(currency_pairs, hours_ago)
+        results_2 = analyzer_coinbase.analyze_specific_currencies(currency_pairs, hours_ago)
+
+        # Ergebnisse ausgeben
+        print("\nAnalyse-Ergebnisse:")
+        for result in results:
+            if result:
+                past_price = result[0][1]
+                current_price = result[1][1]
+                price_change = result[2][1]
+
+                print(f"Währungspaar: {result[0][0]}")
+                print(f"  - Preis vor {hours_ago} Stunden: {past_price:.2f}")
+                print(f"  - Aktueller Preis: {current_price:.2f}")
+                print(f"  - Preisänderung: {price_change:.2f}%\n")
+
+
+
+        # Übergeben Sie die Ergebnisse an CryptoEvaluate
+        evaluator = CryptoEvaluate(results)
+
+        # Filtern Sie Währungspaare basierend auf dem Schwellenwert
+        threshold_results = evaluator.threshold_change(threshold_value)
+        print(f"Währungspaare mit Preisänderung über dem Schwellenwert {threshold_value}: ", threshold_results)
+
+
+        # Übergeben Sie die Ergebnisse an CryptoEvaluate
+     #   evaluator = CryptoEvaluate(results)
+
+        # Filtern Sie Währungspaare basierend auf dem Schwellenwert
+    #    threshold_results = evaluator.threshold_change(threshold_value)
+     #   print("Währungspaare mit Preisänderung über dem Schwellenwert: ", threshold_results)
+
+
+        time.sleep(sleep_value)

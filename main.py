@@ -45,7 +45,7 @@ if __name__ == "__main__":
     api_key = key_manager.get_api_key()
     api_secret = key_manager.get_api_secret()
 
-    threshold_value = 50  # in Prozent
+    threshold_value = -40  # in Prozent
     hours_ago = int(input("Vergangene Stunden eingeben: "))
 
 
