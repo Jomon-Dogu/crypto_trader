@@ -27,6 +27,6 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/*  # Dateien hochladen
+          files: dist/*  # Alle Dateien im dist/ Ordner hochladen
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  # Dein Token hier verwenden
