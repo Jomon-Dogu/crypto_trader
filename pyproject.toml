@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CryptoViewer"
+version = "0.1.0"
+description = "A short description of your project"
+authors = [
+    { name = "Your Name", email = "your_email@example.com" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+homepage = "https://github.com/Jomon-Dogu"
+repository = "https://github.com/Jomon-Dogu/crypto_trader.git"
+
+dependencies = [
+    "requests",  # Example dependency
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package_data]
+# Include data files in the package

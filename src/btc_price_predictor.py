@@ -4,7 +4,7 @@ from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from typing import List
-from price_fetcher import BTCPriceFetcher
+from src.price_fetcher import BTCPriceFetcher
 
 # Assuming BTCPriceFetcher is already defined and implemented as before
 
