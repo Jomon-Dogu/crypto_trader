@@ -24,7 +24,12 @@ jobs:
       - name: Build package
         run: python -m build
 
-      - name: Upload to Release
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*  # Hochladen der Dateien im dist/ Ordner
+
+      - name: Upload to Release (as artifacts)
         uses: actions/upload-artifact@v3
         with:
           name: dist-files
