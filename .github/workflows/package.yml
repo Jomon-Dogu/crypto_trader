@@ -29,7 +29,7 @@ jobs:
       - name: Publish to GitHub Packages
         run: |
           pip install twine
-          twine upload --repository-url https://upload.github.com/Jomon-Dogu/crypto_trader/packages dist/* --verbose
+          twine upload --repository github dist/* --verbose
         env:
           TWINE_USERNAME: ${{ github.actor }}  # GitHub username
           TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}  # GitHub token from the secrets
