@@ -1,7 +1,7 @@
-import btc_price_predictor
-import crypto_evaluator
-import crypto_read
-import crypto_read_alternativ
-import key_manager
-import main
-import price_fetcher
+from . import btc_price_predictor
+from . import crypto_evaluator
+from . import crypto_read
+from . import crypto_read_alternativ
+from . import key_manager
+from . import main
+from . import price_fetcher

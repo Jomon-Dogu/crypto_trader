@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "crypto_trader"
+name = "crypto_viewer"
 version = "0.1.0"
 description = "A short description of your project"
 authors = [
