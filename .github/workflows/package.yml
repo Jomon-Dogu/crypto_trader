@@ -1,35 +1,31 @@
-name: Build and Publish Python Package
+name: Build and Upload Package
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code 
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
-        with: 
+        with:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel build twine  # Ensure build and twine are installed
+        run: pip install setuptools wheel
 
       - name: Build package
-        run: |
-          python -m build
+        run: python setup.py sdist bdist_wheel
 
-      - name: Publish to GitHub Packages
-        run: |
-          pip install twine
-          twine upload --repository github dist/* --verbose
-        env:
-          TWINE_USERNAME: ${{ github.actor }}
-          TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }} 
+      - name: Upload to Release
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package
+          path: dist/
