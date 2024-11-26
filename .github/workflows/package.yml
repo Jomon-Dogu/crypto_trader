@@ -20,16 +20,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools wheel build  # Added build here
+          pip install setuptools wheel build twine  # Ensure build and twine are installed
 
       - name: Build package
         run: |
           python -m build
 
-      - name: Publish to PyPI
+      - name: Publish to GitHub Packages
         run: |
           pip install twine
-          twine upload dist/*
+          twine upload --repository-url https://upload.github.com/Jomon-Dogu/crypto_trader dist/*
         env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          TWINE_USERNAME: ${{ github.actor }}  # GitHub username
+          TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}  # GitHub token from the secrets

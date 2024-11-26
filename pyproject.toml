@@ -1,20 +1,10 @@
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "your-package-name"
 version = "0.1.0"
-description = "A short description of your project"
-authors = [
-    { name = "Your Name", email = "your_email@example.com" }
-]
-readme = "README.md"
-license = { text = "MIT" }
+description = "A brief description of the package"
 
-dependencies = [
-    "requests",  # Example dependencies
-]
+[tool.poetry.dependencies]
+python = "^3.8"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.poetry.publish]
+repository = "github"
