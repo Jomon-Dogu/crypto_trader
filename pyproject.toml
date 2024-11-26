@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "your-package-name"
+name = "CryptoViewer"
 version = "0.1.0"
 description = "A brief description of your package"
 authors = ["Your Name <you@example.com>"]
