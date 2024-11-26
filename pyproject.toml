@@ -11,8 +11,6 @@ authors = [
 ]
 readme = "README.md"
 license = { text = "MIT" }
-homepage = "https://github.com/yourusername/yourrepository"
-repository = "https://github.com/yourusername/yourrepository"
 
 dependencies = [
     "requests",  # Example dependencies
