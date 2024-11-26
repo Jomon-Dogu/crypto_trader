@@ -32,4 +32,4 @@ jobs:
           twine upload --repository github dist/* --verbose
         env:
           TWINE_USERNAME: ${{ github.actor }}
-          TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}  # GitHub token from the secrets
+          TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }} 
