@@ -3,8 +3,8 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "CryptoViewer"
-version = "0.0.2"
+name = "your-package-name"
+version = "0.1.0"
 description = "A short description of your project"
 authors = [
     { name = "Your Name", email = "your_email@example.com" }
@@ -13,11 +13,8 @@ readme = "README.md"
 license = { text = "MIT" }
 
 dependencies = [
-    "requests",  # Example dependency
+    "requests",  # Example dependencies
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package_data]
-# Include data files in the package
