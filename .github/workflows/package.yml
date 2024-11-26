@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'  # Trigger für Versionstags wie v1.0.0
+      - 'v*'
 
 jobs:
   build:
@@ -27,10 +27,6 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/*  # Hochladen der Dateien im dist/ Ordner
-
-      - name: Upload to Release (as artifacts)
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist-files
-          path: dist/
+          files: dist/*  # Dateien hochladen
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  # Dein Token hier verwenden
