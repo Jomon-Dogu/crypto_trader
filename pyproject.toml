@@ -17,10 +17,5 @@ dependencies = [
     "requests",  # Example dependencies
 ]
 
-# [tool.setuptools.packages.find]
-# where = ["crypto_viewer"]
-
-[tool.setuptools]
-# Setuptools-spezifische Konfigurationen (z. B. Paketerkennung)
-packages = ["crypto_viewer"]
-include_package_data = true
+[tool.setuptools.packages.find]
+where = ["crypto_viewer"]
