@@ -1,4 +1,4 @@
-from key_manager import APIKeyManager
+from crypto_viewer.key_manager import APIKeyManager
 import ccxt
 import requests
 from datetime import datetime, timedelta
