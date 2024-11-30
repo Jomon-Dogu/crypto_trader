@@ -21,6 +21,3 @@ dependencies = [
 package-dir = {"" = "src"}              # Falls deine Module im Ordner `src` liegen
 packages = ["crypto_viewer"]            # Enthält explizit dein Paket
 include-package-data = true             # Inkludiere zusätzliche Daten (z. B. aus `MANIFEST.in`)
-
-[tool.setuptools.packages.find]
-where = ["crypto_viewer"]           
