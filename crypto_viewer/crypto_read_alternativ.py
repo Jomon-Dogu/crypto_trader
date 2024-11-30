@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime, timezone, timedelta
 from crypto_viewer.key_manager import APIKeyManager
-from crypto_read import CryptoPriceAnalyzerCoinbase
+from crypto_viewer.crypto_read import CryptoPriceAnalyzerCoinbase
 
 
 class CryptoPriceAnalyzerCryptoCompare:
